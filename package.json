@@ -1,0 +1,16 @@
+{
+  "name": "do-orm",
+  "version": "0.1.0",
+  "description": "Minimal type-safe ORM for Cloudflare Durable Object SQLite",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.3"
+  }
+}
