@@ -4,3 +4,5 @@ export { eq, and } from "./conditions.js";
 export type { Condition } from "./conditions.js";
 export { Database, createDb, asc, desc } from "./db.js";
 export type { SqlStorage, DOStorage } from "./db.js";
+export { migrate } from "./migrate.js";
+export { createTableSql } from "./ddl.js";

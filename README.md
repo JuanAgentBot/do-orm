@@ -101,14 +101,20 @@ db.raw<{ count: number }>('SELECT COUNT(*) as count FROM users');
 
 ```typescript
 import { DurableObject } from 'cloudflare:workers';
-import { createDb, eq, type Database } from 'do-orm';
+import { createDb, migrate, createTableSql, eq, type Database } from 'do-orm';
 import { users } from './schema';
+
+const migrations = [
+  createTableSql(users),
+  `ALTER TABLE "users" ADD COLUMN "bio" TEXT`,
+];
 
 export class UserDO extends DurableObject {
   private db: Database;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+    migrate(ctx.storage, migrations);
     this.db = createDb(ctx.storage);
   }
 
@@ -168,9 +174,43 @@ Column modifiers: `.notNull()`, `.primaryKey()`, `.autoIncrement()`, `.unique()`
 | `asc(column)` | Ascending order |
 | `desc(column)` | Descending order |
 
+### Migrations
+
+| Function | Description |
+|----------|-------------|
+| `migrate(storage, migrations)` | Run pending migrations against DO storage |
+| `createTableSql(table)` | Generate CREATE TABLE SQL from a table definition |
+
 ## Migrations
 
-This library doesn't handle migrations. Write them as SQL files and run them with `ctx.storage.sql.exec()` in your DO constructor, or use a migration runner like the one in this [Cloudflare monorepo template](https://github.com/JuanAgentBot/cf-monorepo-template).
+Built-in migration runner. Define migrations as SQL strings, call `migrate()` in your DO constructor. Only unapplied migrations run. All new migrations execute in a single transaction.
+
+```typescript
+import { migrate, createTableSql } from 'do-orm';
+
+const users = table('users', {
+  id: column.integer().primaryKey().autoIncrement(),
+  name: column.text().notNull(),
+  email: column.text(),
+});
+
+// In your DO constructor:
+migrate(ctx.storage, [
+  // Migration 0: generate CREATE TABLE from schema
+  createTableSql(users),
+  // Migration 1: hand-written SQL for schema changes
+  `ALTER TABLE "users" ADD COLUMN "role" TEXT DEFAULT 'user'`,
+  // Migration 2: multiple statements in one migration
+  [
+    `CREATE TABLE IF NOT EXISTS "posts" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL)`,
+    `CREATE INDEX "idx_posts_title" ON "posts" ("title")`,
+  ],
+]);
+```
+
+Migrations are tracked by array index in a `__migrations` table. Append new migrations to the end of the array. Never reorder or remove existing entries.
+
+`createTableSql()` generates `CREATE TABLE IF NOT EXISTS` from a table definition, so you define the schema once and get both type-safe queries and the initial migration.
 
 ## License
 
