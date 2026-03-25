@@ -161,26 +161,26 @@ function createTrackingTable(storage: DOStorage): void {
 function adoptDrizzle(storage: DOStorage, totalMigrations: number): void {
   // Check if Drizzle tracking table exists
   const tables = storage.sql
-    .exec<{ name: string }>(
+    .exec(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='__drizzle_migrations'",
     )
-    .toArray();
+    .toArray() as { name: string }[];
 
   if (tables.length === 0) return;
 
   // Check if we already adopted (idempotent)
   const existing = storage.sql
-    .exec<{ count: number }>("SELECT COUNT(*) as count FROM __migrations")
-    .one();
+    .exec("SELECT COUNT(*) as count FROM __migrations")
+    .one() as { count: number };
 
   if (existing.count > 0) return;
 
   // Count Drizzle migrations
   const drizzle = storage.sql
-    .exec<{ count: number }>(
+    .exec(
       "SELECT COUNT(*) as count FROM __drizzle_migrations",
     )
-    .one();
+    .one() as { count: number };
 
   const drizzleCount = drizzle.count;
   if (drizzleCount > totalMigrations) {
@@ -204,9 +204,9 @@ function adoptDrizzle(storage: DOStorage, totalMigrations: number): void {
 
 function getMaxVersion(storage: DOStorage): number {
   const row = storage.sql
-    .exec<{ maxV: number | null }>(
+    .exec(
       "SELECT MAX(version) as maxV FROM __migrations",
     )
-    .one();
+    .one() as { maxV: number | null };
   return row.maxV ?? -1;
 }

@@ -10,13 +10,13 @@ export function createTestStorage(): DOStorage & { close(): void } {
   const db = new Database(":memory:");
 
   const sql: SqlStorage = {
-    exec<T extends Record<string, unknown>>(
+    exec(
       query: string,
       ...bindings: unknown[]
     ) {
       const stmt = db.prepare(query);
       if (stmt.reader) {
-        const rows = stmt.all(...bindings) as T[];
+        const rows = stmt.all(...bindings) as Record<string, unknown>[];
         return {
           toArray: () => rows,
           one: () => {
@@ -32,11 +32,11 @@ export function createTestStorage(): DOStorage & { close(): void } {
       }
       stmt.run(...bindings);
       return {
-        toArray: () => [] as T[],
-        one: () => {
+        toArray: () => [] as Record<string, unknown>[],
+        one: (): Record<string, unknown> => {
           throw new Error("Expected exactly 1 row, got 0");
         },
-        [Symbol.iterator]: function* () {
+        [Symbol.iterator]: function* (): IterableIterator<Record<string, unknown>> {
           // empty
         },
       };

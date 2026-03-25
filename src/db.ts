@@ -8,21 +8,19 @@
 import type { TableDef, InferRow, InferInsert, ColumnsRecord } from "./schema.js";
 import type { Condition } from "./conditions.js";
 
-// Minimal interface matching Cloudflare's SqlStorage
+// Minimal interface matching DurableObjectStorage.
+// Non-generic so Cloudflare's DurableObjectStorage satisfies it directly
+// without casts. The Database class handles type narrowing internally.
 export interface SqlStorage {
-  exec<T extends Record<string, unknown>>(
-    query: string,
-    ...bindings: unknown[]
-  ): SqlCursor<T>;
+  exec(query: string, ...bindings: unknown[]): SqlCursor;
 }
 
-interface SqlCursor<T> {
-  toArray(): T[];
-  one(): T;
-  [Symbol.iterator](): IterableIterator<T>;
+interface SqlCursor {
+  toArray(): Record<string, unknown>[];
+  one(): Record<string, unknown>;
+  [Symbol.iterator](): IterableIterator<Record<string, unknown>>;
 }
 
-// Minimal interface matching DurableObjectStorage
 export interface DOStorage {
   sql: SqlStorage;
   transactionSync<T>(fn: () => T): T;
@@ -222,9 +220,9 @@ export class Database {
   ): T[] {
     const cursor =
       params.length > 0
-        ? this.storage.sql.exec<T>(sql, ...params)
-        : this.storage.sql.exec<T>(sql);
-    return cursor.toArray();
+        ? this.storage.sql.exec(sql, ...params)
+        : this.storage.sql.exec(sql);
+    return cursor.toArray() as T[];
   }
 }
 

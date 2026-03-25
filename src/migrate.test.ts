@@ -15,18 +15,18 @@ afterEach(() => {
 // ---- Helpers ----
 
 function getTrackingVersions(): number[] {
-  return storage.sql
-    .exec<{ version: number }>(
+  return (storage.sql
+    .exec(
       "SELECT version FROM __migrations ORDER BY version",
     )
-    .toArray()
+    .toArray() as { version: number }[])
     .map((r) => r.version);
 }
 
 function tableExists(name: string): boolean {
   return (
     storage.sql
-      .exec<{ name: string }>(
+      .exec(
         "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
         name,
       )
