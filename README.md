@@ -104,10 +104,10 @@ import { DurableObject } from 'cloudflare:workers';
 import { createDb, migrate, createTableSql, eq, type Database } from 'do-orm';
 import { users } from './schema';
 
-const migrations = [
-  createTableSql(users),
-  `ALTER TABLE "users" ADD COLUMN "bio" TEXT`,
-];
+const migrations = {
+  m0000: createTableSql(users),
+  m0001: `ALTER TABLE "users" ADD COLUMN "bio" TEXT`,
+};
 
 export class UserDO extends DurableObject {
   private db: Database;
@@ -180,10 +180,11 @@ Column modifiers: `.notNull()`, `.primaryKey()`, `.autoIncrement()`, `.unique()`
 |----------|-------------|
 | `migrate(storage, migrations)` | Run pending migrations against DO storage |
 | `createTableSql(table)` | Generate CREATE TABLE SQL from a table definition |
+| `MigrationError` | Error class with version, statement, and cause context |
 
 ## Migrations
 
-Built-in migration runner. Define migrations as SQL strings, call `migrate()` in your DO constructor. Only unapplied migrations run. All new migrations execute in a single transaction.
+Built-in migration runner. Migrations are a record keyed by `mNNNN` (m0000, m0001, ...). Call `migrate()` in your DO constructor. Only unapplied migrations run. All new migrations execute in a single transaction.
 
 ```typescript
 import { migrate, createTableSql } from 'do-orm';
@@ -195,20 +196,35 @@ const users = table('users', {
 });
 
 // In your DO constructor:
-migrate(ctx.storage, [
+migrate(ctx.storage, {
   // Migration 0: generate CREATE TABLE from schema
-  createTableSql(users),
+  m0000: createTableSql(users),
   // Migration 1: hand-written SQL for schema changes
-  `ALTER TABLE "users" ADD COLUMN "role" TEXT DEFAULT 'user'`,
-  // Migration 2: multiple statements in one migration
-  [
-    `CREATE TABLE IF NOT EXISTS "posts" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL)`,
-    `CREATE INDEX "idx_posts_title" ON "posts" ("title")`,
-  ],
-]);
+  m0001: `ALTER TABLE "users" ADD COLUMN "role" TEXT DEFAULT 'user'`,
+  // Migration 2: multi-statement (use --> statement-breakpoint separator)
+  m0002: [
+    'CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT NOT NULL)',
+    '--> statement-breakpoint',
+    'CREATE INDEX idx_posts_title ON posts (title)',
+  ].join('\n'),
+});
 ```
 
-Migrations are tracked by array index in a `__migrations` table. Append new migrations to the end of the array. Never reorder or remove existing entries.
+Migrations are tracked by version in a `__migrations` table. Keys must be sequential starting from m0000.
+
+### Importing .sql files
+
+For projects with many migrations, import SQL files directly:
+
+```typescript
+import m0000 from './migrations/0000_initial.sql';
+import m0001 from './migrations/0001_add_users.sql';
+migrate(storage, { m0000, m0001 });
+```
+
+### Drizzle adoption
+
+If you're migrating from Drizzle, the runner automatically detects a `__drizzle_migrations` table and adopts existing migrations. Just include all your existing migration SQL strings in the record. The Drizzle tracking table is dropped after adoption.
 
 `createTableSql()` generates `CREATE TABLE IF NOT EXISTS` from a table definition, so you define the schema once and get both type-safe queries and the initial migration.
 
