@@ -36,11 +36,6 @@ interface SelectOptions {
   limit?: number;
 }
 
-interface ReturningColumn {
-  name: string;
-  alias?: string;
-}
-
 export class Database {
   constructor(private storage: DOStorage) {}
 
