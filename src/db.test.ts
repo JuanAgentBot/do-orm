@@ -318,6 +318,81 @@ describe("Database", () => {
     });
   });
 
+  describe("select()", () => {
+    it("selects specific columns", () => {
+      const db = createDb(storage);
+      const result = db.select(users, ["id", "name"]);
+
+      expect(result).toHaveLength(3);
+      expect(result[0]).toEqual({ id: 1, name: "Alice" });
+      expect(result[1]).toEqual({ id: 2, name: "Bob" });
+    });
+
+    it("generates SQL with only specified columns", () => {
+      const db = createDb(storage);
+      db.select(users, ["id", "name"]);
+
+      expect(storage.statements[0].sql).toBe(
+        'SELECT "id", "name" FROM "users"',
+      );
+    });
+
+    it("supports where, orderBy, and limit", () => {
+      const db = createDb(storage);
+      const result = db.select(posts, ["id", "title"], {
+        where: eq("authorId", 1),
+        orderBy: desc("id"),
+        limit: 1,
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({ id: 2, title: "World" });
+
+      expect(storage.statements[0].sql).toBe(
+        'SELECT "id", "title" FROM "posts" WHERE "authorId" = ? ORDER BY "id" DESC LIMIT ?',
+      );
+    });
+
+    it("selects a single column", () => {
+      const db = createDb(storage);
+      const result = db.select(users, ["email"]);
+
+      expect(result).toEqual([
+        { email: "alice@example.com" },
+        { email: null },
+        { email: "charlie@example.com" },
+      ]);
+    });
+  });
+
+  describe("selectOne()", () => {
+    it("returns one projected row", () => {
+      const db = createDb(storage);
+      const result = db.selectOne(users, ["id", "name"], {
+        where: eq("id", 1),
+      });
+
+      expect(result).toEqual({ id: 1, name: "Alice" });
+    });
+
+    it("returns undefined when not found", () => {
+      const db = createDb(storage);
+      const result = db.selectOne(users, ["id", "name"], {
+        where: eq("id", 999),
+      });
+
+      expect(result).toBeUndefined();
+    });
+
+    it("adds LIMIT 1", () => {
+      const db = createDb(storage);
+      db.selectOne(users, ["id"]);
+
+      expect(storage.statements[0].sql).toContain("LIMIT ?");
+      expect(storage.statements[0].params).toEqual([1]);
+    });
+  });
+
   describe("ne() condition", () => {
     it("filters with not-equal", () => {
       const db = createDb(storage);

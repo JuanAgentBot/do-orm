@@ -62,6 +62,32 @@ export class Database {
   }
 
   /**
+   * Select specific columns from all matching rows.
+   */
+  select<C extends ColumnsRecord, K extends keyof C & string>(
+    table: TableDef<C>,
+    columns: K[],
+    options?: SelectOptions,
+  ): Pick<InferRow<C>, K>[] {
+    const { sql, params } = this.buildSelect(table, options, columns);
+    return this.exec<Pick<InferRow<C>, K>>(sql, params);
+  }
+
+  /**
+   * Select specific columns from a single row. Returns undefined if not found.
+   */
+  selectOne<C extends ColumnsRecord, K extends keyof C & string>(
+    table: TableDef<C>,
+    columns: K[],
+    options?: SelectOptions,
+  ): Pick<InferRow<C>, K> | undefined {
+    const effectiveOptions = { ...options, limit: 1 };
+    const { sql, params } = this.buildSelect(table, effectiveOptions, columns);
+    const rows = this.exec<Pick<InferRow<C>, K>>(sql, params);
+    return rows[0];
+  }
+
+  /**
    * Count rows, optionally filtered.
    */
   count<C extends ColumnsRecord>(
@@ -175,10 +201,10 @@ export class Database {
   private buildSelect<C extends ColumnsRecord>(
     table: TableDef<C>,
     options?: SelectOptions,
+    columns?: string[],
   ): { sql: string; params: unknown[] } {
-    const cols = Object.keys(table.columns)
-      .map((k) => `"${k}"`)
-      .join(", ");
+    const colNames = columns ?? Object.keys(table.columns);
+    const cols = colNames.map((k) => `"${k}"`).join(", ");
     let sql = `SELECT ${cols} FROM "${table.name}"`;
     const params: unknown[] = [];
 

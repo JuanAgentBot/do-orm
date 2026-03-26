@@ -71,6 +71,15 @@ db.all(users, { where: eq('role', 'admin') });       // filtered
 db.all(users, { orderBy: desc('name'), limit: 10 }); // sorted + limited
 db.get(users, { where: eq('id', 1) });               // one row or undefined
 
+// Column projection (skip expensive columns)
+db.select(posts, ['id', 'title', 'status']);         // only those 3 columns
+db.select(posts, ['id', 'title'], {                  // with filtering
+  where: eq('authorId', 1),
+  orderBy: desc('id'),
+  limit: 20,
+});
+db.selectOne(users, ['id', 'name'], { where: eq('id', 1) });
+
 // Count
 db.count(users, { where: eq('role', 'admin') });
 
@@ -165,6 +174,8 @@ Column modifiers: `.notNull()`, `.primaryKey()`, `.autoIncrement()`, `.unique()`
 | `createDb(storage)` | Create a Database from DO storage |
 | `db.all(table, opts?)` | Select all matching rows |
 | `db.get(table, opts?)` | Select one row or undefined |
+| `db.select(table, cols, opts?)` | Select specific columns from all matching rows |
+| `db.selectOne(table, cols, opts?)` | Select specific columns from one row |
 | `db.count(table, opts?)` | Count matching rows |
 | `db.insert(table, values)` | Insert a row |
 | `db.insertReturning(table, values, cols)` | Insert and return columns |
