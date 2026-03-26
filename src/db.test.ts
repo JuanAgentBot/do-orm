@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { table, column, createDb, eq, and, asc, desc } from "./index.js";
+import { table, column, createDb, eq, ne, lt, lte, gt, gte, and, asc, desc } from "./index.js";
 import { createMockStorage } from "./test-utils.js";
 import type { InferRow, InferInsert } from "./index.js";
 
@@ -315,6 +315,114 @@ describe("Database", () => {
 
       expect(storage.statements[0].sql).toBe('DELETE FROM "users"');
       expect(storage.tables.get("users")).toEqual([]);
+    });
+  });
+
+  describe("ne() condition", () => {
+    it("filters with not-equal", () => {
+      const db = createDb(storage);
+      const result = db.all(users, { where: ne("role", "admin") });
+
+      expect(result).toHaveLength(2);
+      expect(result[0].name).toBe("Bob");
+      expect(result[1].name).toBe("Charlie");
+    });
+
+    it("generates != SQL", () => {
+      const db = createDb(storage);
+      db.all(users, { where: ne("role", "admin") });
+
+      expect(storage.statements[0].sql).toContain('"role" != ?');
+      expect(storage.statements[0].params).toEqual(["admin"]);
+    });
+  });
+
+  describe("lt() condition", () => {
+    it("filters with less-than", () => {
+      const db = createDb(storage);
+      const result = db.all(posts, { where: lt("id", 3) });
+
+      expect(result).toHaveLength(2);
+      expect(result[0].title).toBe("Hello");
+      expect(result[1].title).toBe("World");
+    });
+
+    it("generates < SQL", () => {
+      const db = createDb(storage);
+      db.all(posts, { where: lt("id", 3) });
+
+      expect(storage.statements[0].sql).toContain('"id" < ?');
+      expect(storage.statements[0].params).toEqual([3]);
+    });
+  });
+
+  describe("lte() condition", () => {
+    it("filters with less-than-or-equal", () => {
+      const db = createDb(storage);
+      const result = db.all(posts, { where: lte("id", 2) });
+
+      expect(result).toHaveLength(2);
+    });
+
+    it("generates <= SQL", () => {
+      const db = createDb(storage);
+      db.all(posts, { where: lte("id", 2) });
+
+      expect(storage.statements[0].sql).toContain('"id" <= ?');
+    });
+  });
+
+  describe("gt() condition", () => {
+    it("filters with greater-than", () => {
+      const db = createDb(storage);
+      const result = db.all(posts, { where: gt("id", 1) });
+
+      expect(result).toHaveLength(2);
+      expect(result[0].title).toBe("World");
+      expect(result[1].title).toBe("Foo");
+    });
+
+    it("generates > SQL", () => {
+      const db = createDb(storage);
+      db.all(posts, { where: gt("id", 1) });
+
+      expect(storage.statements[0].sql).toContain('"id" > ?');
+    });
+  });
+
+  describe("gte() condition", () => {
+    it("filters with greater-than-or-equal", () => {
+      const db = createDb(storage);
+      const result = db.all(posts, { where: gte("id", 2) });
+
+      expect(result).toHaveLength(2);
+    });
+
+    it("generates >= SQL", () => {
+      const db = createDb(storage);
+      db.all(posts, { where: gte("id", 2) });
+
+      expect(storage.statements[0].sql).toContain('"id" >= ?');
+    });
+  });
+
+  describe("comparison operators with and()", () => {
+    it("supports cursor pagination pattern", () => {
+      const db = createDb(storage);
+      const result = db.all(posts, {
+        where: and(lt("id", 3), gte("createdAt", "2026-01-01")),
+        orderBy: desc("id"),
+        limit: 10,
+      });
+
+      expect(result).toHaveLength(2);
+      expect(result[0].title).toBe("World");
+      expect(result[1].title).toBe("Hello");
+
+      expect(storage.statements[0].sql).toContain(
+        'WHERE ("id" < ?) AND ("createdAt" >= ?)',
+      );
+      expect(storage.statements[0].params).toEqual([3, "2026-01-01", 10]);
     });
   });
 

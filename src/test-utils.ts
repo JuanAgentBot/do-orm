@@ -276,13 +276,35 @@ function matchesWhere(
 
   const whereSql = whereMatch[1];
 
-  // Parse conditions: "col" = ? patterns
-  const condMatches = [...whereSql.matchAll(/"(\w+)" = \?/g)];
+  // Parse conditions: "col" op ? patterns (=, !=, <, <=, >, >=)
+  const condMatches = [...whereSql.matchAll(/"(\w+)" (=|!=|<=|>=|<|>) \?/g)];
   let paramIdx = bindingOffset;
   for (const match of condMatches) {
     const col = match[1];
+    const op = match[2];
     const val = bindings[paramIdx++];
-    if (row[col] !== val) return false;
+    const rowVal = row[col];
+
+    switch (op) {
+      case "=":
+        if (rowVal !== val) return false;
+        break;
+      case "!=":
+        if (rowVal === val) return false;
+        break;
+      case "<":
+        if (!(rowVal !== null && rowVal !== undefined && val !== null && val !== undefined && rowVal < val)) return false;
+        break;
+      case "<=":
+        if (!(rowVal !== null && rowVal !== undefined && val !== null && val !== undefined && rowVal <= val)) return false;
+        break;
+      case ">":
+        if (!(rowVal !== null && rowVal !== undefined && val !== null && val !== undefined && rowVal > val)) return false;
+        break;
+      case ">=":
+        if (!(rowVal !== null && rowVal !== undefined && val !== null && val !== undefined && rowVal >= val)) return false;
+        break;
+    }
   }
 
   return true;

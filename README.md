@@ -60,7 +60,7 @@ AutoIncrement PKs, nullable columns, and columns with defaults are optional in i
 ### Query
 
 ```typescript
-import { createDb, eq, and, asc, desc } from 'do-orm';
+import { createDb, eq, ne, lt, lte, gt, gte, and, asc, desc } from 'do-orm';
 
 // In your Durable Object constructor:
 const db = createDb(ctx.storage);
@@ -84,8 +84,21 @@ db.update(users, { email: 'new@x.com' }, { where: eq('id', 1) });
 // Delete
 db.delete(users, { where: eq('id', 1) });
 
+// Comparison operators
+db.all(posts, { where: gt('id', 100) });                                    // greater than
+db.all(posts, { where: gte('createdAt', '2026-01-01') });                   // greater than or equal
+db.all(posts, { where: lt('id', cursor) });                                  // less than
+db.all(users, { where: ne('role', 'banned') });                              // not equal
+
 // Compound conditions
 db.all(posts, { where: and(eq('authorId', 1), eq('status', 'published')) });
+
+// Cursor pagination
+db.all(posts, {
+  where: and(lt('id', cursor), gte('createdAt', since)),
+  orderBy: desc('id'),
+  limit: 20,
+});
 
 // Transaction
 db.transaction(() => {
@@ -164,7 +177,12 @@ Column modifiers: `.notNull()`, `.primaryKey()`, `.autoIncrement()`, `.unique()`
 
 | Function | Description |
 |----------|-------------|
-| `eq(column, value)` | Equality condition |
+| `eq(column, value)` | Equal (`=`) |
+| `ne(column, value)` | Not equal (`!=`) |
+| `lt(column, value)` | Less than (`<`) |
+| `lte(column, value)` | Less than or equal (`<=`) |
+| `gt(column, value)` | Greater than (`>`) |
+| `gte(column, value)` | Greater than or equal (`>=`) |
 | `and(...conditions)` | AND multiple conditions |
 
 ### Ordering
