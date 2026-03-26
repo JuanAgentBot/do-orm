@@ -5,4 +5,3 @@ export type { Condition } from "./conditions.js";
 export { Database, createDb, asc, desc } from "./db.js";
 export type { SqlStorage, DOStorage } from "./db.js";
 export { migrate, MigrationError } from "./migrate.js";
-export { createTableSql } from "./ddl.js";

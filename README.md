@@ -123,11 +123,11 @@ db.raw<{ count: number }>('SELECT COUNT(*) as count FROM users');
 
 ```typescript
 import { DurableObject } from 'cloudflare:workers';
-import { createDb, migrate, createTableSql, eq, type Database } from 'do-orm';
+import { createDb, migrate, eq, type Database } from 'do-orm';
 import { users } from './schema';
 
 const migrations = {
-  m0000: createTableSql(users),
+  m0000: `CREATE TABLE IF NOT EXISTS "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL, "email" TEXT, "role" TEXT NOT NULL DEFAULT 'user')`,
   m0001: `ALTER TABLE "users" ADD COLUMN "bio" TEXT`,
 };
 
@@ -208,27 +208,22 @@ Column modifiers: `.notNull()`, `.primaryKey()`, `.autoIncrement()`, `.unique()`
 | Function | Description |
 |----------|-------------|
 | `migrate(storage, migrations)` | Run pending migrations against DO storage |
-| `createTableSql(table)` | Generate CREATE TABLE SQL from a table definition |
 | `MigrationError` | Error class with version, statement, and cause context |
 
 ## Migrations
 
 Built-in migration runner. Migrations are a record keyed by `mNNNN` (m0000, m0001, ...). Call `migrate()` in your DO constructor. Only unapplied migrations run. All new migrations execute in a single transaction.
 
-```typescript
-import { migrate, createTableSql } from 'do-orm';
+**Migrations must be hand-written SQL strings.** Each migration is an immutable snapshot of the change it represents. Never generate migration SQL from the live schema definition, because schema definitions change over time while past migrations must not.
 
-const users = table('users', {
-  id: column.integer().primaryKey().autoIncrement(),
-  name: column.text().notNull(),
-  email: column.text(),
-});
+```typescript
+import { migrate } from 'do-orm';
 
 // In your DO constructor:
 migrate(ctx.storage, {
-  // Migration 0: generate CREATE TABLE from schema
-  m0000: createTableSql(users),
-  // Migration 1: hand-written SQL for schema changes
+  // Migration 0: hand-written CREATE TABLE
+  m0000: `CREATE TABLE IF NOT EXISTS "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL, "email" TEXT)`,
+  // Migration 1: add a column
   m0001: `ALTER TABLE "users" ADD COLUMN "role" TEXT DEFAULT 'user'`,
   // Migration 2: multi-statement (use --> statement-breakpoint separator)
   m0002: [
@@ -254,8 +249,6 @@ migrate(storage, { m0000, m0001 });
 ### Drizzle adoption
 
 If you're migrating from Drizzle, the runner automatically detects a `__drizzle_migrations` table and adopts existing migrations. Just include all your existing migration SQL strings in the record. The Drizzle tracking table is dropped after adoption.
-
-`createTableSql()` generates `CREATE TABLE IF NOT EXISTS` from a table definition, so you define the schema once and get both type-safe queries and the initial migration.
 
 ## License
 
